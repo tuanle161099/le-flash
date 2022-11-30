@@ -11,7 +11,7 @@ pub use errors::*;
 pub use instructions::*;
 pub use schema::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("3E8eFwLQhHgtzqAnestzG7SeZUWYH7BZLf8m9EGa8wJH");
 
 #[program]
 pub mod le_flash {

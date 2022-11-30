@@ -1,6 +1,6 @@
 {
   "name": "le-flash",
-  "main": "dist/app/index.js",
+  "main": "dist",
   "version": "1.0.2",
   "publishConfig": {
     "access": "public",

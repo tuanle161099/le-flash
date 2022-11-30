@@ -59,7 +59,7 @@ class LeFlashProgram {
                 additionalFee: 0,
             }));
         };
-        this.initializePool = ({ pool = anchor_1.web3.Keypair.generate(), mintLpt = anchor_1.web3.Keypair.generate(), sendAndConfirm = false, mint, }) => __awaiter(this, void 0, void 0, function* () {
+        this.initializePool = ({ pool = anchor_1.web3.Keypair.generate(), mintLpt = anchor_1.web3.Keypair.generate(), sendAndConfirm = true, mint, }) => __awaiter(this, void 0, void 0, function* () {
             const newPool = pool;
             const poolAddress = newPool.publicKey.toBase58();
             const treasurer = yield this.deriveTreasurerAddress(poolAddress);
@@ -77,37 +77,38 @@ class LeFlashProgram {
                 .transaction();
             let txId = '';
             if (sendAndConfirm) {
+                this._provider.opts.skipPreflight = true;
                 txId = yield this._provider.sendAndConfirm(tx, [newPool, mintLpt]);
             }
             return { txId, poolAddress: newPool.publicKey.toBase58(), tx };
         });
-        this.deposit = ({ amount, poolAddress, sendAndConfirm = true, }) => __awaiter(this, void 0, void 0, function* () {
-            const { mint, mintLpt } = yield this.getPoolData(poolAddress);
+        this.deposit = ({ amount, poolAddress, sendAndConfirm = true, mintNFTAddress, }) => __awaiter(this, void 0, void 0, function* () {
+            const { mintLpt } = yield this.getPoolData(poolAddress);
             const treasurer = yield this.deriveTreasurerAddress(poolAddress);
-            const metadataAddress = yield (0, utils_1.findNftMetadataAddress)(new anchor_1.web3.PublicKey(mint));
+            const metadataAddress = yield (0, utils_1.findNftMetadataAddress)(new anchor_1.web3.PublicKey(mintNFTAddress));
             const metadataPublicKey = metadataAddress.toBase58();
             const tokenAccountLpt = yield anchor_1.utils.token.associatedAddress({
                 mint: mintLpt,
                 owner: new anchor_1.web3.PublicKey(this._provider.wallet.publicKey),
             });
             const srcAssociatedTokenAccount = yield anchor_1.utils.token.associatedAddress({
-                mint,
+                mint: new anchor_1.web3.PublicKey(mintNFTAddress),
                 owner: new anchor_1.web3.PublicKey(this._provider.wallet.publicKey),
             });
             const treasury = yield anchor_1.utils.token.associatedAddress({
-                mint: new anchor_1.web3.PublicKey(mint),
+                mint: new anchor_1.web3.PublicKey(mintNFTAddress),
                 owner: new anchor_1.web3.PublicKey(treasurer),
             });
             let tx = yield this.program.methods
                 .deposit(amount)
-                .accounts(Object.assign({ authority: this._provider.wallet.publicKey, pool: poolAddress, associatedTokenAccountLpt: tokenAccountLpt, mint,
-                mintLpt,
+                .accounts(Object.assign({ authority: this._provider.wallet.publicKey, pool: poolAddress, associatedTokenAccountLpt: tokenAccountLpt, mint: mintNFTAddress, mintLpt,
                 srcAssociatedTokenAccount,
                 treasurer,
                 treasury, metadata: metadataPublicKey }, PROGRAMS))
                 .transaction();
             let txId = '';
             if (sendAndConfirm) {
+                this._provider.opts.skipPreflight = true;
                 txId = yield this._provider.sendAndConfirm(tx, []);
             }
             return { txId, tx };

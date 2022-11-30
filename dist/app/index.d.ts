@@ -24,10 +24,11 @@ declare class LeFlashProgram {
         poolAddress: string;
         tx: web3.Transaction;
     }>;
-    deposit: ({ amount, poolAddress, sendAndConfirm, }: {
+    deposit: ({ amount, poolAddress, sendAndConfirm, mintNFTAddress, }: {
         amount: BN;
         poolAddress: Address;
         sendAndConfirm?: boolean | undefined;
+        mintNFTAddress: string;
     }) => Promise<{
         txId: string;
         tx: web3.Transaction;

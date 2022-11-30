@@ -48,8 +48,8 @@ describe('le-flash', () => {
     const { txId } = await leFlashProgram.deposit({
       amount: AMOUNT,
       poolAddress: POOL.publicKey,
+      mintNFTAddress: MINT.publicKey.toBase58(),
     })
-    console.log(txId)
   })
 
   it('Withdraw', async () => {

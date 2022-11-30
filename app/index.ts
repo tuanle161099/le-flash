@@ -69,7 +69,7 @@ class LeFlashProgram {
   initializePool = async ({
     pool = web3.Keypair.generate(),
     mintLpt = web3.Keypair.generate(),
-    sendAndConfirm = false,
+    sendAndConfirm = true,
     mint,
   }: {
     pool?: web3.Keypair
@@ -105,6 +105,7 @@ class LeFlashProgram {
 
     let txId = ''
     if (sendAndConfirm) {
+      this._provider.opts.skipPreflight = true
       txId = await this._provider.sendAndConfirm(tx, [newPool, mintLpt])
     }
 
@@ -115,16 +116,18 @@ class LeFlashProgram {
     amount,
     poolAddress,
     sendAndConfirm = true,
+    mintNFTAddress,
   }: {
     amount: BN
     poolAddress: Address
     sendAndConfirm?: boolean
+    mintNFTAddress: string
   }) => {
-    const { mint, mintLpt } = await this.getPoolData(poolAddress)
+    const { mintLpt } = await this.getPoolData(poolAddress)
     const treasurer = await this.deriveTreasurerAddress(poolAddress)
 
     const metadataAddress = await findNftMetadataAddress(
-      new web3.PublicKey(mint),
+      new web3.PublicKey(mintNFTAddress),
     )
     const metadataPublicKey = metadataAddress.toBase58()
 
@@ -134,12 +137,12 @@ class LeFlashProgram {
     })
 
     const srcAssociatedTokenAccount = await utils.token.associatedAddress({
-      mint,
+      mint: new web3.PublicKey(mintNFTAddress),
       owner: new web3.PublicKey(this._provider.wallet.publicKey),
     })
 
     const treasury = await utils.token.associatedAddress({
-      mint: new web3.PublicKey(mint),
+      mint: new web3.PublicKey(mintNFTAddress),
       owner: new web3.PublicKey(treasurer),
     })
 
@@ -149,7 +152,7 @@ class LeFlashProgram {
         authority: this._provider.wallet.publicKey,
         pool: poolAddress,
         associatedTokenAccountLpt: tokenAccountLpt,
-        mint,
+        mint: mintNFTAddress,
         mintLpt,
         srcAssociatedTokenAccount,
         treasurer,
@@ -161,6 +164,7 @@ class LeFlashProgram {
 
     let txId = ''
     if (sendAndConfirm) {
+      this._provider.opts.skipPreflight = true
       txId = await this._provider.sendAndConfirm(tx, [])
     }
     return { txId, tx }
@@ -222,6 +226,7 @@ class LeFlashProgram {
   }
 }
 
+export * from '../target/types/le_flash'
 export * from './constant'
 export * from './utils'
 
