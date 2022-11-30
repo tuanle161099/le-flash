@@ -84,6 +84,8 @@ class LeFlashProgram {
         this.deposit = ({ amount, poolAddress, sendAndConfirm = true, }) => __awaiter(this, void 0, void 0, function* () {
             const { mint, mintLpt } = yield this.getPoolData(poolAddress);
             const treasurer = yield this.deriveTreasurerAddress(poolAddress);
+            const metadataAddress = yield (0, utils_1.findNftMetadataAddress)(new anchor_1.web3.PublicKey(mint));
+            const metadataPublicKey = metadataAddress.toBase58();
             const tokenAccountLpt = yield anchor_1.utils.token.associatedAddress({
                 mint: mintLpt,
                 owner: new anchor_1.web3.PublicKey(this._provider.wallet.publicKey),
@@ -102,7 +104,7 @@ class LeFlashProgram {
                 mintLpt,
                 srcAssociatedTokenAccount,
                 treasurer,
-                treasury }, PROGRAMS))
+                treasury, metadata: metadataPublicKey }, PROGRAMS))
                 .transaction();
             let txId = '';
             if (sendAndConfirm) {
@@ -113,6 +115,8 @@ class LeFlashProgram {
         this.withdraw = ({ amount, poolAddress, sendAndConfirm = true, }) => __awaiter(this, void 0, void 0, function* () {
             const { mint, mintLpt } = yield this.getPoolData(poolAddress);
             const treasurer = yield this.deriveTreasurerAddress(poolAddress);
+            const metadataAddress = yield (0, utils_1.findNftMetadataAddress)(new anchor_1.web3.PublicKey(mint));
+            const metadataPublicKey = metadataAddress.toBase58();
             const tokenAccountLpt = yield anchor_1.utils.token.associatedAddress({
                 mint: mintLpt,
                 owner: new anchor_1.web3.PublicKey(this._provider.wallet.publicKey),
@@ -131,7 +135,7 @@ class LeFlashProgram {
                 mintLpt,
                 dstAssociatedTokenAccount,
                 treasurer,
-                treasury }, PROGRAMS))
+                treasury, metadata: metadataPublicKey }, PROGRAMS))
                 .transaction();
             let txId = '';
             if (sendAndConfirm) {

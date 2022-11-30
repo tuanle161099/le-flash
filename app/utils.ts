@@ -1,6 +1,7 @@
 import { Address, AnchorProvider, web3 } from '@project-serum/anchor'
 import { Connection, PublicKey, Transaction } from '@solana/web3.js'
 import { WalletInterface } from './rawWallet'
+import { programs } from '@metaplex/js'
 
 /**
  * Validate an address
@@ -47,4 +48,16 @@ export const getAnchorProvider = (
       skipPreflight: true,
     },
   )
+}
+
+/**
+ * Find the NFT metadata address
+ * @param nftAddress public key
+ * @returns NFT metadata public key
+ */
+export const findNftMetadataAddress = async (nftAddress: web3.PublicKey) => {
+  const metadataPDA = await programs.metadata.Metadata.getPDA(
+    new web3.PublicKey(nftAddress),
+  )
+  return metadataPDA
 }

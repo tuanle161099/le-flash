@@ -1,13 +1,15 @@
 use anchor_lang::prelude::*;
 
-pub mod schema;
-pub use schema::*;
-
 pub mod constant;
-pub use constant::*;
-
+pub mod errors;
 pub mod instructions;
+pub mod schema;
+pub mod traits;
+
+pub use constant::*;
+pub use errors::*;
 pub use instructions::*;
+pub use schema::*;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 

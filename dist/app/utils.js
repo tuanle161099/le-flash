@@ -9,9 +9,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAnchorProvider = exports.isAddress = void 0;
+exports.findNftMetadataAddress = exports.getAnchorProvider = exports.isAddress = void 0;
 const anchor_1 = require("@project-serum/anchor");
 const web3_js_1 = require("@solana/web3.js");
+const js_1 = require("@metaplex/js");
 /**
  * Validate an address
  * @param address Base58 string
@@ -52,3 +53,13 @@ const getAnchorProvider = (node, walletAddress, wallet) => {
     });
 };
 exports.getAnchorProvider = getAnchorProvider;
+/**
+ * Find the NFT metadata address
+ * @param nftAddress public key
+ * @returns NFT metadata public key
+ */
+const findNftMetadataAddress = (nftAddress) => __awaiter(void 0, void 0, void 0, function* () {
+    const metadataPDA = yield js_1.programs.metadata.Metadata.getPDA(new anchor_1.web3.PublicKey(nftAddress));
+    return metadataPDA;
+});
+exports.findNftMetadataAddress = findNftMetadataAddress;

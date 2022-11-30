@@ -1,4 +1,6 @@
+use crate::errors::ErrorCode;
 use crate::schema::pool::*;
+use crate::traits::Permission;
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
 
@@ -37,6 +39,8 @@ pub struct Deposit<'info> {
     pub associated_token_account_lpt: Box<Account<'info, token::TokenAccount>>,
     // mint
     pub mint: Box<Account<'info, token::Mint>>,
+    /// CHECK: Just a pure account
+    pub metadata: AccountInfo<'info>,
     #[account(
     init_if_needed,
     payer = authority,
@@ -60,6 +64,11 @@ pub struct Deposit<'info> {
 
 pub fn exec(ctx: Context<Deposit>, amount_in: u64) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
+
+    // Validate mint_nft belongs to collection
+    if !pool.is_valid_mint_nft(ctx.accounts.mint.key(), &ctx.accounts.metadata) {
+        return err!(ErrorCode::InvalidNftCollection);
+    }
 
     // Deposit tokens to the treasury
     let transfer_ctx = CpiContext::new(

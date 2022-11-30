@@ -1,6 +1,10 @@
-use crate::schema::pool::*;
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token, token};
+
+use crate::errors::ErrorCode;
+use crate::traits::{Permission};
+use crate::schema::pool::*;
+
 
 #[event]
 pub struct WithdrawEvent {
@@ -37,6 +41,9 @@ pub struct Withdraw<'info> {
     pub associated_token_account_lpt: Box<Account<'info, token::TokenAccount>>,
     // mint
     pub mint: Box<Account<'info, token::Mint>>,
+    
+    /// CHECK: Just a pure account
+    pub metadata: AccountInfo<'info>,
     #[account(
     init_if_needed,
     payer = authority,
@@ -62,7 +69,9 @@ pub struct Withdraw<'info> {
 pub fn exec(ctx: Context<Withdraw>, amount_out: u64) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
 
-
+    if !pool.is_valid_mint_nft(ctx.accounts.mint.key(), &ctx.accounts.metadata) {
+        return err!(ErrorCode::InvalidNftCollection);
+      }
     // Burn LPT token
   let bur_to_ctx = CpiContext::new(
     ctx.accounts.token_program.to_account_info(),

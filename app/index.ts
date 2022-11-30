@@ -12,7 +12,7 @@ import { ComputeBudgetProgram, Transaction } from '@solana/web3.js'
 import { TOKEN_PROGRAM_ID } from '@project-serum/anchor/dist/cjs/utils/token'
 import { LeFlash } from '../target/types/le_flash'
 import { DEFAULT_LE_FLASH_IDL } from './constant'
-import { isAddress } from './utils'
+import { findNftMetadataAddress, isAddress } from './utils'
 
 export type PoolData = IdlAccounts<LeFlash>['pool']
 
@@ -123,6 +123,11 @@ class LeFlashProgram {
     const { mint, mintLpt } = await this.getPoolData(poolAddress)
     const treasurer = await this.deriveTreasurerAddress(poolAddress)
 
+    const metadataAddress = await findNftMetadataAddress(
+      new web3.PublicKey(mint),
+    )
+    const metadataPublicKey = metadataAddress.toBase58()
+
     const tokenAccountLpt = await utils.token.associatedAddress({
       mint: mintLpt,
       owner: new web3.PublicKey(this._provider.wallet.publicKey),
@@ -149,6 +154,7 @@ class LeFlashProgram {
         srcAssociatedTokenAccount,
         treasurer,
         treasury,
+        metadata: metadataPublicKey,
         ...PROGRAMS,
       })
       .transaction()
@@ -171,6 +177,11 @@ class LeFlashProgram {
   }) => {
     const { mint, mintLpt } = await this.getPoolData(poolAddress)
     const treasurer = await this.deriveTreasurerAddress(poolAddress)
+
+    const metadataAddress = await findNftMetadataAddress(
+      new web3.PublicKey(mint),
+    )
+    const metadataPublicKey = metadataAddress.toBase58()
 
     const tokenAccountLpt = await utils.token.associatedAddress({
       mint: mintLpt,
@@ -198,6 +209,7 @@ class LeFlashProgram {
         dstAssociatedTokenAccount,
         treasurer,
         treasury,
+        metadata: metadataPublicKey,
         ...PROGRAMS,
       })
       .transaction()
