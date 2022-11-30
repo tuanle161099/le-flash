@@ -222,7 +222,6 @@ class LeFlashProgram {
   }
 }
 
-export * from '../target/types/le_flash'
 export * from './constant'
 export * from './utils'
 
