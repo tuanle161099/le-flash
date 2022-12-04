@@ -9,6 +9,7 @@ pub struct Distributor {
     pub total: u64,
     pub claimed: u64,
     pub ended_at: i64,
+    pub started_at: i64,
     pub metadata: [u8; 32],
 }
 
@@ -19,6 +20,7 @@ impl Distributor {
         + U8_SIZE * 32
         + U64_SIZE
         + U64_SIZE
+        + I64_SIZE
         + I64_SIZE
         + U8_SIZE * 32;
 

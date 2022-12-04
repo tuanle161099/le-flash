@@ -1,5 +1,4 @@
 use crate::errors::ErrorCode;
-use crate::receipt;
 use crate::schema::{Distributor, Receipt};
 use crate::utils::{collect_fee, current_timestamp};
 use anchor_lang::prelude::*;
@@ -8,7 +7,7 @@ use anchor_spl::{associated_token, token};
 #[event]
 pub struct ClaimEvent {
     pub destination: Pubkey,
-    pub amount: u64,
+    pub recipient: Pubkey,
     pub started_at: i64,
     pub claimed_at: i64,
     pub claimed: u64,
@@ -67,6 +66,7 @@ pub fn claim(
     started_at: i64,
     salt: [u8; 32],
     fee: u64,
+    amount: u64,
 ) -> Result<()> {
     // Charge fee
     collect_fee(
@@ -101,7 +101,7 @@ pub fn claim(
     // Update distributor data
     distributor.claimed = distributor
         .claimed
-        .checked_add(1)
+        .checked_add(amount)
         .ok_or(ErrorCode::Overflow)?;
     // Unlock tokens in the treasury
     let seeds: &[&[&[u8]]] = &[&[
@@ -118,11 +118,11 @@ pub fn claim(
         },
         seeds,
     );
-    token::transfer(transfer_ctx, 1)?;
+    token::transfer(transfer_ctx, amount)?;
 
     emit!(ClaimEvent {
         destination: ctx.accounts.dst.key(),
-        amount: 1,
+        recipient,
         started_at,
         claimed_at: receipt.claimed_at,
         claimed: distributor.claimed,
