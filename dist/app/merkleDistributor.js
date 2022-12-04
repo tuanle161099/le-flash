@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MerkleDistributor = exports.LEAF_LEN = void 0;
 const anchor_1 = require("@project-serum/anchor");
 const js_sha3_1 = require("js-sha3");
-exports.LEAF_LEN = 80;
+exports.LEAF_LEN = 108;
 class MerkleDistributor {
     constructor(receipients = []) {
         /**
@@ -104,10 +104,10 @@ MerkleDistributor.sort = (...args) => {
         return i;
     });
 };
-MerkleDistributor.serialize = ({ authority, recipient, startedAt, salt, }) => {
+MerkleDistributor.serialize = ({ authority, chequeAddress, startedAt, salt, }) => {
     return Buffer.concat([
         authority.toBuffer(),
-        recipient.toBuffer(),
+        chequeAddress.toBuffer(),
         startedAt.toArrayLike(Buffer, 'le', 8),
         salt,
     ]);
@@ -117,7 +117,7 @@ MerkleDistributor.deserialize = (buf) => {
         throw new Error('Invalid buffer');
     return {
         authority: new anchor_1.web3.PublicKey(buf.subarray(0, 32)),
-        recipient: new anchor_1.web3.PublicKey(buf.subarray(32, 64)),
+        chequeAddress: new anchor_1.web3.PublicKey(buf.subarray(32, 64)),
         startedAt: new anchor_1.BN(buf.subarray(64, 72), 'le'),
         salt: Buffer.from(buf.subarray(72, 104)),
     };

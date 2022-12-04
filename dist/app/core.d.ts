@@ -3,7 +3,7 @@ import { Transaction } from '@solana/web3.js';
 import { LeFlash } from '../target/types/le_flash';
 import { ChequeData, PoolData } from './types';
 declare class LeFlashProgram {
-    private _provider;
+    readonly _provider: AnchorProvider;
     readonly program: Program<LeFlash>;
     constructor(provider: AnchorProvider, programId: string);
     deriveTreasurerAddress: (poolAddress: Address) => Promise<string>;
@@ -26,7 +26,7 @@ declare class LeFlashProgram {
      * @returns Pool readable data.
      */
     getChequeData: (chequeAddress: Address) => Promise<ChequeData>;
-    fetch: () => Promise<any>;
+    fetchCheques: () => Promise<any>;
     requestUnits: (tx: web3.Transaction, addCompute: number) => Transaction;
     initializePool: ({ pool, mintLpt, sendAndConfirm, mint, }: {
         pool?: web3.Keypair | undefined;
@@ -38,11 +38,12 @@ declare class LeFlashProgram {
         poolAddress: string;
         tx: web3.Transaction;
     }>;
-    deposit: ({ recipient, poolAddress, sendAndConfirm, mintNFTAddress, }: {
+    deposit: ({ recipient, poolAddress, sendAndConfirm, mintNFTAddress, chequeKeypair, }: {
         recipient?: string | undefined;
         poolAddress: string;
         sendAndConfirm?: boolean | undefined;
         mintNFTAddress: string;
+        chequeKeypair?: web3.Keypair | undefined;
     }) => Promise<{
         txId: string;
         tx: web3.Transaction;
@@ -71,7 +72,4 @@ declare class LeFlashProgram {
         tx: web3.Transaction;
     }>;
 }
-export * from '../target/types/le_flash';
-export * from './constant';
-export * from './utils';
 export default LeFlashProgram;

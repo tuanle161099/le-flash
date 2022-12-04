@@ -2,17 +2,17 @@
 import { web3, BN } from '@project-serum/anchor';
 export type Leaf = {
     authority: web3.PublicKey;
-    recipient: web3.PublicKey;
+    chequeAddress: web3.PublicKey;
     startedAt: BN;
     salt: Buffer;
 };
-export declare const LEAF_LEN = 80;
+export declare const LEAF_LEN = 108;
 export declare class MerkleDistributor {
     receipients: Leaf[];
     leafs: Buffer[];
     constructor(receipients?: Leaf[]);
     static sort: (...args: Buffer[]) => Buffer[];
-    static serialize: ({ authority, recipient, startedAt, salt, }: Leaf) => Buffer;
+    static serialize: ({ authority, chequeAddress, startedAt, salt, }: Leaf) => Buffer;
     static deserialize: (buf: Buffer) => Leaf;
     /**
      * Get total distributed tokens

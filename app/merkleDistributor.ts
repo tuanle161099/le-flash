@@ -3,12 +3,12 @@ import { keccak_256 as hash } from 'js-sha3'
 
 export type Leaf = {
   authority: web3.PublicKey
-  recipient: web3.PublicKey
+  chequeAddress: web3.PublicKey
   startedAt: BN
   salt: Buffer // 32 bytes
 }
 
-export const LEAF_LEN = 80
+export const LEAF_LEN = 108
 
 export class MerkleDistributor {
   public receipients: Leaf[]
@@ -31,13 +31,13 @@ export class MerkleDistributor {
 
   static serialize = ({
     authority,
-    recipient,
+    chequeAddress,
     startedAt,
     salt,
   }: Leaf): Buffer => {
     return Buffer.concat([
       authority.toBuffer(),
-      recipient.toBuffer(),
+      chequeAddress.toBuffer(),
       startedAt.toArrayLike(Buffer, 'le', 8),
       salt,
     ])
@@ -47,7 +47,7 @@ export class MerkleDistributor {
     if (buf.length !== LEAF_LEN) throw new Error('Invalid buffer')
     return {
       authority: new web3.PublicKey(buf.subarray(0, 32)),
-      recipient: new web3.PublicKey(buf.subarray(32, 64)),
+      chequeAddress: new web3.PublicKey(buf.subarray(32, 64)),
       startedAt: new BN(buf.subarray(64, 72), 'le'),
       salt: Buffer.from(buf.subarray(72, 104)),
     }
