@@ -5,6 +5,7 @@ import {
   Address,
   AnchorProvider,
   BN,
+  IdlAccounts,
 } from '@project-serum/anchor'
 import { ComputeBudgetProgram, Transaction } from '@solana/web3.js'
 
@@ -22,7 +23,7 @@ const PROGRAMS = {
 }
 
 class LeFlashProgram {
-  private _provider: AnchorProvider
+  readonly _provider: AnchorProvider
   readonly program: Program<LeFlash>
   constructor(provider: AnchorProvider, programId: string) {
     if (!isAddress(programId)) throw new Error('Invalid program id')
@@ -107,7 +108,7 @@ class LeFlashProgram {
     return this.program.account.cheque.fetch(chequeAddress) as any
   }
 
-  fetch = async (): Promise<any> => {
+  fetchCheques = async (): Promise<any> => {
     return this.program.account.cheque.all() as any
   }
 
@@ -171,14 +172,15 @@ class LeFlashProgram {
     poolAddress,
     sendAndConfirm = true,
     mintNFTAddress,
+    chequeKeypair = web3.Keypair.generate(),
   }: {
     recipient?: string
     poolAddress: string
     sendAndConfirm?: boolean
     mintNFTAddress: string
+    chequeKeypair?: web3.Keypair
   }) => {
     const chequePubkey = new web3.PublicKey(recipient)
-    const chequeKeypair = web3.Keypair.generate()
     const { mintLpt } = await this.getPoolData(poolAddress)
 
     const treasurer = await this.deriveTreasurerAddress(poolAddress)
@@ -349,19 +351,16 @@ class LeFlashProgram {
       .accounts({
         authority: this._provider.wallet.publicKey,
         cheque: chequePubkey,
-        systemProgram: PROGRAMS.systemProgram,
+        ...PROGRAMS,
       })
       .transaction()
     let txId = ''
+    console.log(tx, 'tx')
     if (sendAndConfirm) {
       txId = await this._provider.sendAndConfirm(tx, [])
     }
     return { txId, tx }
   }
 }
-
-export * from '../target/types/le_flash'
-export * from './constant'
-export * from './utils'
 
 export default LeFlashProgram
