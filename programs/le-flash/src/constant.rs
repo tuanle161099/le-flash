@@ -8,4 +8,4 @@ pub const I64_SIZE: usize = 8;
 pub const BOOL_SIZE: usize = 1;
 pub const VECTOR_OVERHEAD_SIZE: usize = 4;
 pub const INVOKED_ACCOUNT_SIZE: usize = 36;
-pub const MINT_LPT_DECIMALS: u8 = 9;
+pub const MINT_LPT_DECIMALS: u8 = 0;

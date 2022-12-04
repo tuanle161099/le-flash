@@ -25,10 +25,13 @@ pub mod le_flash {
         initialize_pool::exec(ctx, mint, treasury)
     }
 
-    pub fn deposit(ctx: Context<Deposit>, amount_int: u64) -> Result<()> {
-        deposit::exec(ctx, amount_int)
+    pub fn deposit(ctx: Context<Deposit>, recipient: Pubkey) -> Result<()> {
+        deposit::exec(ctx, recipient)
     }
     pub fn withdraw(ctx: Context<Withdraw>, amount_out: u64) -> Result<()> {
         withdraw::exec(ctx, amount_out)
+    }
+    pub fn withdraw_nft(ctx: Context<WithdrawNFT>) -> Result<()> {
+        withdraw_nft::exec(ctx)
     }
 }

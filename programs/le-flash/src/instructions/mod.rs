@@ -6,3 +6,6 @@ pub use deposit::*;
 
 pub mod withdraw;
 pub use withdraw::*;
+
+pub mod withdraw_nft;
+pub use withdraw_nft::*;

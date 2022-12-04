@@ -15,6 +15,7 @@ import { DEFAULT_LE_FLASH_IDL } from './constant'
 import { findNftMetadataAddress, isAddress } from './utils'
 
 export type PoolData = IdlAccounts<LeFlash>['pool']
+export type ChequeData = IdlAccounts<LeFlash>['cheque']
 
 const PROGRAMS = {
   rent: web3.SYSVAR_RENT_PUBKEY,
@@ -49,12 +50,68 @@ class LeFlashProgram {
   }
 
   /**
+   * Derive my cheque address by proposal address and receipt's index.
+   * @param proposalAddress Proposal address.
+   * @param strict (Optional) if true, a validation process will activate to make sure the cheque is safe.
+   * @returns cheque address.
+   */
+  deriveChequeAddress = async (
+    poolAddress: string,
+    strict: boolean = false,
+  ) => {
+    if (!isAddress(poolAddress)) throw new Error('Invalid proposal address')
+    const poolPublicKey = new web3.PublicKey(poolAddress)
+    const authorityPublicKey = this._provider.wallet.publicKey
+    const [chequePubkey] = await await web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from('cheque'),
+        poolPublicKey.toBuffer(),
+        authorityPublicKey.toBuffer(),
+      ],
+      this.program.programId,
+    )
+    const chequeAddress = chequePubkey.toBase58()
+
+    if (strict) {
+      let onchainAuthorityAddress: string
+      let onchainPoolAddress: string
+      try {
+        const { authority, pool } = await this.getChequeData(chequeAddress)
+        onchainAuthorityAddress = authority.toBase58()
+        onchainPoolAddress = pool.toBase58()
+      } catch (er) {
+        throw new Error(`This cheque ${chequeAddress} is not initialized yet`)
+      }
+      if (
+        this._provider.wallet.publicKey.toBase58() !== onchainAuthorityAddress
+      )
+        throw new Error('Violated authority address')
+      if (poolAddress !== onchainPoolAddress)
+        throw new Error('Violated proposal address')
+    }
+
+    return chequeAddress
+  }
+
+  /**
    * Get pool data.
    * @param poolAddress Pool address.
    * @returns Pool readable data.
    */
   getPoolData = async (poolAddress: Address): Promise<PoolData> => {
     return this.program.account.pool.fetch(poolAddress) as any
+  }
+  /**
+   * Get pool data.
+   * @param chequeAddress Receipt address.
+   * @returns Pool readable data.
+   */
+  getChequeData = async (chequeAddress: Address): Promise<ChequeData> => {
+    return this.program.account.cheque.fetch(chequeAddress) as any
+  }
+
+  fetch = async (): Promise<any> => {
+    return this.program.account.cheque.all() as any
   }
 
   requestUnits = (tx: web3.Transaction, addCompute: number): Transaction => {
@@ -69,7 +126,7 @@ class LeFlashProgram {
   initializePool = async ({
     pool = web3.Keypair.generate(),
     mintLpt = web3.Keypair.generate(),
-    sendAndConfirm = false,
+    sendAndConfirm = true,
     mint,
   }: {
     pool?: web3.Keypair
@@ -105,6 +162,7 @@ class LeFlashProgram {
 
     let txId = ''
     if (sendAndConfirm) {
+      this._provider.opts.skipPreflight = true
       txId = await this._provider.sendAndConfirm(tx, [newPool, mintLpt])
     }
 
@@ -112,48 +170,52 @@ class LeFlashProgram {
   }
 
   deposit = async ({
-    amount,
+    recipient = this._provider.wallet.publicKey.toBase58(),
     poolAddress,
     sendAndConfirm = true,
+    mintNFTAddress,
   }: {
-    amount: BN
-    poolAddress: Address
+    recipient?: string
+    poolAddress: string
     sendAndConfirm?: boolean
+    mintNFTAddress: string
   }) => {
-    const { mint, mintLpt } = await this.getPoolData(poolAddress)
-    const treasurer = await this.deriveTreasurerAddress(poolAddress)
+    const chequePubkey = new web3.PublicKey(recipient)
+    const chequeKeypair = web3.Keypair.generate()
+    const { mintLpt } = await this.getPoolData(poolAddress)
 
+    const treasurer = await this.deriveTreasurerAddress(poolAddress)
     const metadataAddress = await findNftMetadataAddress(
-      new web3.PublicKey(mint),
+      new web3.PublicKey(mintNFTAddress),
     )
     const metadataPublicKey = metadataAddress.toBase58()
-
     const tokenAccountLpt = await utils.token.associatedAddress({
       mint: mintLpt,
       owner: new web3.PublicKey(this._provider.wallet.publicKey),
     })
 
     const srcAssociatedTokenAccount = await utils.token.associatedAddress({
-      mint,
+      mint: new web3.PublicKey(mintNFTAddress),
       owner: new web3.PublicKey(this._provider.wallet.publicKey),
     })
-
     const treasury = await utils.token.associatedAddress({
-      mint: new web3.PublicKey(mint),
+      mint: new web3.PublicKey(mintNFTAddress),
       owner: new web3.PublicKey(treasurer),
     })
+    const chequePublicKey = chequeKeypair.publicKey.toBase58()
 
     let tx = await this.program.methods
-      .deposit(amount)
+      .deposit(chequePubkey)
       .accounts({
         authority: this._provider.wallet.publicKey,
         pool: poolAddress,
         associatedTokenAccountLpt: tokenAccountLpt,
-        mint,
+        mint: mintNFTAddress,
         mintLpt,
         srcAssociatedTokenAccount,
         treasurer,
         treasury,
+        cheque: chequePublicKey,
         metadata: metadataPublicKey,
         ...PROGRAMS,
       })
@@ -161,9 +223,10 @@ class LeFlashProgram {
 
     let txId = ''
     if (sendAndConfirm) {
-      txId = await this._provider.sendAndConfirm(tx, [])
+      this._provider.opts.skipPreflight = true
+      txId = await this._provider.sendAndConfirm(tx, [chequeKeypair])
     }
-    return { txId, tx }
+    return { txId, tx, chequeAddress: chequeKeypair.publicKey.toBase58() }
   }
 
   withdraw = async ({
@@ -210,6 +273,61 @@ class LeFlashProgram {
         treasurer,
         treasury,
         metadata: metadataPublicKey,
+        ...PROGRAMS,
+      })
+      .transaction()
+
+    let txId = ''
+    if (sendAndConfirm) {
+      txId = await this._provider.sendAndConfirm(tx, [])
+    }
+    return { txId, tx }
+  }
+
+  withdrawNFT = async ({
+    chequeAddress,
+    sendAndConfirm = true,
+  }: {
+    chequeAddress: Address
+    sendAndConfirm?: boolean
+  }) => {
+    const { pool, mint: mintNFT } = await this.getChequeData(chequeAddress)
+    const { mintLpt } = await this.getPoolData(pool)
+    const treasurer = await this.deriveTreasurerAddress(pool)
+
+    const metadataAddress = await findNftMetadataAddress(
+      new web3.PublicKey(mintNFT),
+    )
+    const metadataPublicKey = metadataAddress.toBase58()
+
+    const tokenAccountLpt = await utils.token.associatedAddress({
+      mint: mintLpt,
+      owner: new web3.PublicKey(this._provider.wallet.publicKey),
+    })
+
+    const dstAssociatedTokenAccount = await utils.token.associatedAddress({
+      mint: mintNFT,
+      owner: new web3.PublicKey(this._provider.wallet.publicKey),
+    })
+
+    const treasury = await utils.token.associatedAddress({
+      mint: new web3.PublicKey(mintNFT),
+      owner: new web3.PublicKey(treasurer),
+    })
+
+    let tx = await this.program.methods
+      .withdrawNft()
+      .accounts({
+        authority: this._provider.wallet.publicKey,
+        pool,
+        associatedTokenAccountLpt: tokenAccountLpt,
+        mint: mintNFT,
+        mintLpt,
+        dstAssociatedTokenAccount,
+        treasurer,
+        treasury,
+        metadata: metadataPublicKey,
+        cheque: chequeAddress,
         ...PROGRAMS,
       })
       .transaction()
