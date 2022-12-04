@@ -2,17 +2,32 @@ import { web3, Program, Address, AnchorProvider, BN, IdlAccounts } from '@projec
 import { Transaction } from '@solana/web3.js';
 import { LeFlash } from '../target/types/le_flash';
 export type PoolData = IdlAccounts<LeFlash>['pool'];
+export type ChequeData = IdlAccounts<LeFlash>['cheque'];
 declare class LeFlashProgram {
     private _provider;
     readonly program: Program<LeFlash>;
     constructor(provider: AnchorProvider, programId: string);
     deriveTreasurerAddress: (poolAddress: Address) => Promise<string>;
     /**
+     * Derive my cheque address by proposal address and receipt's index.
+     * @param proposalAddress Proposal address.
+     * @param strict (Optional) if true, a validation process will activate to make sure the cheque is safe.
+     * @returns cheque address.
+     */
+    deriveChequeAddress: (poolAddress: string, strict?: boolean) => Promise<string>;
+    /**
      * Get pool data.
      * @param poolAddress Pool address.
      * @returns Pool readable data.
      */
     getPoolData: (poolAddress: Address) => Promise<PoolData>;
+    /**
+     * Get pool data.
+     * @param chequeAddress Receipt address.
+     * @returns Pool readable data.
+     */
+    getChequeData: (chequeAddress: Address) => Promise<ChequeData>;
+    fetch: () => Promise<any>;
     requestUnits: (tx: web3.Transaction, addCompute: number) => Transaction;
     initializePool: ({ pool, mintLpt, sendAndConfirm, mint, }: {
         pool?: web3.Keypair | undefined;
@@ -24,7 +39,17 @@ declare class LeFlashProgram {
         poolAddress: string;
         tx: web3.Transaction;
     }>;
-    deposit: ({ amount, poolAddress, sendAndConfirm, }: {
+    deposit: ({ recipient, poolAddress, sendAndConfirm, mintNFTAddress, }: {
+        recipient?: string | undefined;
+        poolAddress: string;
+        sendAndConfirm?: boolean | undefined;
+        mintNFTAddress: string;
+    }) => Promise<{
+        txId: string;
+        tx: web3.Transaction;
+        chequeAddress: string;
+    }>;
+    withdraw: ({ amount, poolAddress, sendAndConfirm, }: {
         amount: BN;
         poolAddress: Address;
         sendAndConfirm?: boolean | undefined;
@@ -32,9 +57,15 @@ declare class LeFlashProgram {
         txId: string;
         tx: web3.Transaction;
     }>;
-    withdraw: ({ amount, poolAddress, sendAndConfirm, }: {
-        amount: BN;
-        poolAddress: Address;
+    withdrawNFT: ({ chequeAddress, sendAndConfirm, }: {
+        chequeAddress: Address;
+        sendAndConfirm?: boolean | undefined;
+    }) => Promise<{
+        txId: string;
+        tx: web3.Transaction;
+    }>;
+    closeCheque: ({ chequeAddress, sendAndConfirm, }: {
+        chequeAddress: string;
         sendAndConfirm?: boolean | undefined;
     }) => Promise<{
         txId: string;

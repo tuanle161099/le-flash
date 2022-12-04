@@ -4,4 +4,20 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Invalid NFT collection")]
     InvalidNftCollection,
+    #[msg("NFT has not been retrieved")]
+    NotWithDraw,
+    #[msg("Operation overflowed")]
+    Overflow,
+    #[msg("Invalid merkle proof")]
+    InvalidMerkleProof,
+    #[msg("Cannot get current date")]
+    InvalidCurrentDate,
+    #[msg("The campaign has been ended")]
+    EndedCampaign,
+    #[msg("The campaign is not started yet")]
+    NotStartedCampaign,
+    #[msg("The campaign is not ended yet")]
+    NotEndedCampaign,
+    #[msg("Cannot derive the program address")]
+    NoBump,
 }

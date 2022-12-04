@@ -6,11 +6,9 @@ pub struct Cheque {
     pub authority: Pubkey,
     pub pool: Pubkey,
     pub mint: Pubkey,
-    pub locked_date: i64,
-    pub unlocked_date: i64,
+    pub amount: u64,
 }
 
 impl Cheque {
-    pub const LEN: usize =
-        DISCRIMINATOR_SIZE + PUBKEY_SIZE + PUBKEY_SIZE + PUBKEY_SIZE + I64_SIZE + I64_SIZE;
+    pub const LEN: usize = DISCRIMINATOR_SIZE + PUBKEY_SIZE + PUBKEY_SIZE + PUBKEY_SIZE + U64_SIZE;
 }

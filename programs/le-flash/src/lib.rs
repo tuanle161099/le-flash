@@ -5,13 +5,14 @@ pub mod errors;
 pub mod instructions;
 pub mod schema;
 pub mod traits;
+pub mod utils;
 
 pub use constant::*;
 pub use errors::*;
 pub use instructions::*;
 pub use schema::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("3E8eFwLQhHgtzqAnestzG7SeZUWYH7BZLf8m9EGa8wJH");
 
 #[program]
 pub mod le_flash {
@@ -33,5 +34,8 @@ pub mod le_flash {
     }
     pub fn withdraw_nft(ctx: Context<WithdrawNFT>) -> Result<()> {
         withdraw_nft::exec(ctx)
+    }
+    pub fn close_cheque(ctx: Context<CloseCheque>) -> Result<()> {
+        close_cheque::exec(ctx)
     }
 }

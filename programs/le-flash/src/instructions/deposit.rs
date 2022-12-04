@@ -114,6 +114,7 @@ pub fn exec(ctx: Context<Deposit>, recipient: Pubkey) -> Result<()> {
     cheque.authority = recipient;
     cheque.mint = ctx.accounts.mint.key();
     cheque.pool = pool.key();
+    cheque.amount = amount_in;
 
     emit!(DepositEvent {
         authority: recipient,

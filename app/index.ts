@@ -338,6 +338,29 @@ class LeFlashProgram {
     }
     return { txId, tx }
   }
+
+  closeCheque = async ({
+    chequeAddress,
+    sendAndConfirm = true,
+  }: {
+    chequeAddress: string
+    sendAndConfirm?: boolean
+  }) => {
+    const chequePubkey = new web3.PublicKey(chequeAddress)
+    const tx = await this.program.methods
+      .closeCheque()
+      .accounts({
+        authority: this._provider.wallet.publicKey,
+        cheque: chequePubkey,
+        systemProgram: PROGRAMS.systemProgram,
+      })
+      .transaction()
+    let txId = ''
+    if (sendAndConfirm) {
+      txId = await this._provider.sendAndConfirm(tx, [])
+    }
+    return { txId, tx }
+  }
 }
 
 export * from '../target/types/le_flash'

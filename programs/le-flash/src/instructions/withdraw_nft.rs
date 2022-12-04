@@ -75,10 +75,13 @@ pub struct WithdrawNFT<'info> {
 pub fn exec(ctx: Context<WithdrawNFT> ) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
     let cheque = &mut ctx.accounts.cheque;
+    let amount = cheque.amount;
+    cheque.amount = 0;
 
     if !pool.is_valid_mint_nft(cheque.mint, &ctx.accounts.metadata) {
         return err!(ErrorCode::InvalidNftCollection);
       }
+
     // Burn LPT token
   let bur_to_ctx = CpiContext::new(
     ctx.accounts.token_program.to_account_info(),
@@ -88,7 +91,7 @@ pub fn exec(ctx: Context<WithdrawNFT> ) -> Result<()> {
       authority: ctx.accounts.authority.to_account_info(),
     },
   );
-  token::burn(bur_to_ctx, 1)?;
+  token::burn(bur_to_ctx, amount)?;
 
     let seeds: &[&[&[u8]]] = &[&[
         "treasurer".as_ref(),
@@ -106,7 +109,9 @@ pub fn exec(ctx: Context<WithdrawNFT> ) -> Result<()> {
         },
         seeds,
     );
-    token::transfer(mint_to_ctx, 1)?;
+    token::transfer(mint_to_ctx, amount)?;
+
+   
 
     emit!(WithdrawNFTEvent {
         authority: ctx.accounts.authority.key(),

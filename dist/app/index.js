@@ -46,6 +46,41 @@ class LeFlashProgram {
             return treasurerPublicKey.toBase58();
         });
         /**
+         * Derive my cheque address by proposal address and receipt's index.
+         * @param proposalAddress Proposal address.
+         * @param strict (Optional) if true, a validation process will activate to make sure the cheque is safe.
+         * @returns cheque address.
+         */
+        this.deriveChequeAddress = (poolAddress, strict = false) => __awaiter(this, void 0, void 0, function* () {
+            if (!(0, utils_1.isAddress)(poolAddress))
+                throw new Error('Invalid proposal address');
+            const poolPublicKey = new anchor_1.web3.PublicKey(poolAddress);
+            const authorityPublicKey = this._provider.wallet.publicKey;
+            const [chequePubkey] = yield yield anchor_1.web3.PublicKey.findProgramAddress([
+                Buffer.from('cheque'),
+                poolPublicKey.toBuffer(),
+                authorityPublicKey.toBuffer(),
+            ], this.program.programId);
+            const chequeAddress = chequePubkey.toBase58();
+            if (strict) {
+                let onchainAuthorityAddress;
+                let onchainPoolAddress;
+                try {
+                    const { authority, pool } = yield this.getChequeData(chequeAddress);
+                    onchainAuthorityAddress = authority.toBase58();
+                    onchainPoolAddress = pool.toBase58();
+                }
+                catch (er) {
+                    throw new Error(`This cheque ${chequeAddress} is not initialized yet`);
+                }
+                if (this._provider.wallet.publicKey.toBase58() !== onchainAuthorityAddress)
+                    throw new Error('Violated authority address');
+                if (poolAddress !== onchainPoolAddress)
+                    throw new Error('Violated proposal address');
+            }
+            return chequeAddress;
+        });
+        /**
          * Get pool data.
          * @param poolAddress Pool address.
          * @returns Pool readable data.
@@ -53,13 +88,24 @@ class LeFlashProgram {
         this.getPoolData = (poolAddress) => __awaiter(this, void 0, void 0, function* () {
             return this.program.account.pool.fetch(poolAddress);
         });
+        /**
+         * Get pool data.
+         * @param chequeAddress Receipt address.
+         * @returns Pool readable data.
+         */
+        this.getChequeData = (chequeAddress) => __awaiter(this, void 0, void 0, function* () {
+            return this.program.account.cheque.fetch(chequeAddress);
+        });
+        this.fetch = () => __awaiter(this, void 0, void 0, function* () {
+            return this.program.account.cheque.all();
+        });
         this.requestUnits = (tx, addCompute) => {
             return tx.add(web3_js_1.ComputeBudgetProgram.requestUnits({
                 units: addCompute,
                 additionalFee: 0,
             }));
         };
-        this.initializePool = ({ pool = anchor_1.web3.Keypair.generate(), mintLpt = anchor_1.web3.Keypair.generate(), sendAndConfirm = false, mint, }) => __awaiter(this, void 0, void 0, function* () {
+        this.initializePool = ({ pool = anchor_1.web3.Keypair.generate(), mintLpt = anchor_1.web3.Keypair.generate(), sendAndConfirm = true, mint, }) => __awaiter(this, void 0, void 0, function* () {
             const newPool = pool;
             const poolAddress = newPool.publicKey.toBase58();
             const treasurer = yield this.deriveTreasurerAddress(poolAddress);
@@ -77,40 +123,44 @@ class LeFlashProgram {
                 .transaction();
             let txId = '';
             if (sendAndConfirm) {
+                this._provider.opts.skipPreflight = true;
                 txId = yield this._provider.sendAndConfirm(tx, [newPool, mintLpt]);
             }
             return { txId, poolAddress: newPool.publicKey.toBase58(), tx };
         });
-        this.deposit = ({ amount, poolAddress, sendAndConfirm = true, }) => __awaiter(this, void 0, void 0, function* () {
-            const { mint, mintLpt } = yield this.getPoolData(poolAddress);
+        this.deposit = ({ recipient = this._provider.wallet.publicKey.toBase58(), poolAddress, sendAndConfirm = true, mintNFTAddress, }) => __awaiter(this, void 0, void 0, function* () {
+            const chequePubkey = new anchor_1.web3.PublicKey(recipient);
+            const chequeKeypair = anchor_1.web3.Keypair.generate();
+            const { mintLpt } = yield this.getPoolData(poolAddress);
             const treasurer = yield this.deriveTreasurerAddress(poolAddress);
-            const metadataAddress = yield (0, utils_1.findNftMetadataAddress)(new anchor_1.web3.PublicKey(mint));
+            const metadataAddress = yield (0, utils_1.findNftMetadataAddress)(new anchor_1.web3.PublicKey(mintNFTAddress));
             const metadataPublicKey = metadataAddress.toBase58();
             const tokenAccountLpt = yield anchor_1.utils.token.associatedAddress({
                 mint: mintLpt,
                 owner: new anchor_1.web3.PublicKey(this._provider.wallet.publicKey),
             });
             const srcAssociatedTokenAccount = yield anchor_1.utils.token.associatedAddress({
-                mint,
+                mint: new anchor_1.web3.PublicKey(mintNFTAddress),
                 owner: new anchor_1.web3.PublicKey(this._provider.wallet.publicKey),
             });
             const treasury = yield anchor_1.utils.token.associatedAddress({
-                mint: new anchor_1.web3.PublicKey(mint),
+                mint: new anchor_1.web3.PublicKey(mintNFTAddress),
                 owner: new anchor_1.web3.PublicKey(treasurer),
             });
+            const chequePublicKey = chequeKeypair.publicKey.toBase58();
             let tx = yield this.program.methods
-                .deposit(amount)
-                .accounts(Object.assign({ authority: this._provider.wallet.publicKey, pool: poolAddress, associatedTokenAccountLpt: tokenAccountLpt, mint,
-                mintLpt,
+                .deposit(chequePubkey)
+                .accounts(Object.assign({ authority: this._provider.wallet.publicKey, pool: poolAddress, associatedTokenAccountLpt: tokenAccountLpt, mint: mintNFTAddress, mintLpt,
                 srcAssociatedTokenAccount,
                 treasurer,
-                treasury, metadata: metadataPublicKey }, PROGRAMS))
+                treasury, cheque: chequePublicKey, metadata: metadataPublicKey }, PROGRAMS))
                 .transaction();
             let txId = '';
             if (sendAndConfirm) {
-                txId = yield this._provider.sendAndConfirm(tx, []);
+                this._provider.opts.skipPreflight = true;
+                txId = yield this._provider.sendAndConfirm(tx, [chequeKeypair]);
             }
-            return { txId, tx };
+            return { txId, tx, chequeAddress: chequeKeypair.publicKey.toBase58() };
         });
         this.withdraw = ({ amount, poolAddress, sendAndConfirm = true, }) => __awaiter(this, void 0, void 0, function* () {
             const { mint, mintLpt } = yield this.getPoolData(poolAddress);
@@ -136,6 +186,53 @@ class LeFlashProgram {
                 dstAssociatedTokenAccount,
                 treasurer,
                 treasury, metadata: metadataPublicKey }, PROGRAMS))
+                .transaction();
+            let txId = '';
+            if (sendAndConfirm) {
+                txId = yield this._provider.sendAndConfirm(tx, []);
+            }
+            return { txId, tx };
+        });
+        this.withdrawNFT = ({ chequeAddress, sendAndConfirm = true, }) => __awaiter(this, void 0, void 0, function* () {
+            const { pool, mint: mintNFT } = yield this.getChequeData(chequeAddress);
+            const { mintLpt } = yield this.getPoolData(pool);
+            const treasurer = yield this.deriveTreasurerAddress(pool);
+            const metadataAddress = yield (0, utils_1.findNftMetadataAddress)(new anchor_1.web3.PublicKey(mintNFT));
+            const metadataPublicKey = metadataAddress.toBase58();
+            const tokenAccountLpt = yield anchor_1.utils.token.associatedAddress({
+                mint: mintLpt,
+                owner: new anchor_1.web3.PublicKey(this._provider.wallet.publicKey),
+            });
+            const dstAssociatedTokenAccount = yield anchor_1.utils.token.associatedAddress({
+                mint: mintNFT,
+                owner: new anchor_1.web3.PublicKey(this._provider.wallet.publicKey),
+            });
+            const treasury = yield anchor_1.utils.token.associatedAddress({
+                mint: new anchor_1.web3.PublicKey(mintNFT),
+                owner: new anchor_1.web3.PublicKey(treasurer),
+            });
+            let tx = yield this.program.methods
+                .withdrawNft()
+                .accounts(Object.assign({ authority: this._provider.wallet.publicKey, pool, associatedTokenAccountLpt: tokenAccountLpt, mint: mintNFT, mintLpt,
+                dstAssociatedTokenAccount,
+                treasurer,
+                treasury, metadata: metadataPublicKey, cheque: chequeAddress }, PROGRAMS))
+                .transaction();
+            let txId = '';
+            if (sendAndConfirm) {
+                txId = yield this._provider.sendAndConfirm(tx, []);
+            }
+            return { txId, tx };
+        });
+        this.closeCheque = ({ chequeAddress, sendAndConfirm = true, }) => __awaiter(this, void 0, void 0, function* () {
+            const chequePubkey = new anchor_1.web3.PublicKey(chequeAddress);
+            const tx = yield this.program.methods
+                .closeCheque()
+                .accounts({
+                authority: this._provider.wallet.publicKey,
+                cheque: chequePubkey,
+                systemProgram: PROGRAMS.systemProgram,
+            })
                 .transaction();
             let txId = '';
             if (sendAndConfirm) {
