@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.findNftMetadataAddress = exports.getAnchorProvider = exports.isAddress = void 0;
+exports.findReceipt = exports.isHash = exports.findNftMetadataAddress = exports.getAnchorProvider = exports.isAddress = void 0;
 const anchor_1 = require("@project-serum/anchor");
 const web3_js_1 = require("@solana/web3.js");
 const js_1 = require("@metaplex/js");
@@ -63,3 +63,32 @@ const findNftMetadataAddress = (nftAddress) => __awaiter(void 0, void 0, void 0,
     return metadataPDA;
 });
 exports.findNftMetadataAddress = findNftMetadataAddress;
+/**
+ * Validate an hash (must have length 32)
+ * @param hash Hash buffer
+ * @returns true/false
+ */
+const isHash = (hash) => {
+    if (!hash || hash.length !== 32)
+        return false;
+    return true;
+};
+exports.isHash = isHash;
+/**
+ * Find the my receipt of an proposal based on canonical bump
+ * @param index Receipt index
+ * @param proposalPublicKey Proposal public key
+ * @param authorityPublicKey Receipt authority public key
+ * @param programId Sen Utility program public key
+ * @returns Receipt public key
+ */
+const findReceipt = (salt, distributorPublicKey, authorityPublicKey, programId) => __awaiter(void 0, void 0, void 0, function* () {
+    const [receiptPublicKey] = yield anchor_1.web3.PublicKey.findProgramAddress([
+        Buffer.from('receipt'),
+        salt,
+        distributorPublicKey.toBuffer(),
+        authorityPublicKey.toBuffer(),
+    ], programId);
+    return receiptPublicKey;
+});
+exports.findReceipt = findReceipt;
